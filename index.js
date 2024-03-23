@@ -88,54 +88,74 @@ async function run() {
     app.post("/products", async (req, res) => {
       const products = req.body;
       const result = await productCollection.insertOne(products);
-      res.send(result);
+      return res.send(result);
     });
     // ==============================================================
     app.get("/products", async (req, res) => {
       try {
         const result = await productCollection.find().toArray();
-        res.status(200).json({
+        return res.status(200).json({
           success: true,
           message: "All Product fetched successfully",
           result,
         });
       } catch (error) {
-        res.send({ message: "Error server" });
+        return res.send({ message: "Error server" });
       }
     });
     // ==============================================================
     app.get("/products/filter", async (req, res) => {
       const query = req.query;
+      let filter = {};
+
+      // Handle filtering by rating
+      if (query.rating) {
+        const rating = parseFloat(query.rating);
+        filter.rating = { $lte: rating };
+      }
+
+      // Handle filtering by price range
       if (query.price) {
-        // Split the price range into minimum and maximum values
         const [minPrice, maxPrice] = query.price.split("-");
-
-        // Construct MongoDB query to find documents within the price range
-        const filter = {
-          price: {
-            $gte: parseFloat(minPrice),
-            $lte: parseFloat(maxPrice),
-          },
+        filter.price = {
+          $gte: parseFloat(minPrice),
+          $lte: parseFloat(maxPrice),
         };
-        console.log("Hittttttttinggggggggggg");
+      }
 
+      // Handle filtering by flash sale
+      if (query.flashSale) {
+        const flashSale = query.flashSale === "true";
+        filter.flashSale = flashSale;
+      }
+
+      // Handle filtering by top rated
+      if (query.topRated) {
+        const topRated = query.topRated === "true";
+        filter.topRated = topRated;
+      }
+
+      try {
+        // Fetch products based on the constructed filter
         const result = await productCollection.find(filter).toArray();
-        console.log(result);
 
-        res.status(200).json({
+        // Return the result
+        return res.status(200).json({
           success: true,
-          message: "Query  Product fetched successfully",
+          message: "Products fetched successfully",
           result: result,
         });
-      } else {
-        const result = await productCollection.find(query).toArray();
-        res.status(200).json({
-          success: true,
-          message: "Query  Product fetched successfully",
-          result,
+      } catch (error) {
+        // Handle any errors that may occur
+        console.error("Error fetching products:", error);
+        return res.status(500).json({
+          success: false,
+          message: "An error occurred while fetching products",
+          error: error.message,
         });
       }
     });
+
     // ==============================================================
     app.get("/products/:id", async (req, res) => {
       try {
@@ -158,21 +178,21 @@ async function run() {
             .json({ success: false, error: "Product not found" });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
           success: true,
           message: "Product fetched successfully",
           result,
         });
       } catch (error) {
         console.error("Error:", error);
-        res
+        return res
           .status(500)
           .json({ success: false, error: "Internal server error" });
       }
     });
     // ==============================================================
     app.get("*", async (req, res) => {
-      res.status(404).json({ error: "Api Not Found" });
+      return res.status(404).json({ error: "Api Not Found" });
     });
     // ==============================================================
 
