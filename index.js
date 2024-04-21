@@ -28,58 +28,82 @@ async function run() {
     const db = client.db("trenzyshirt");
     const collection = db.collection("users");
     const productCollection = db.collection("products");
+    const orderCollection = db.collection("orders");
 
     // User Registration
-    app.post("/api/v1/register", async (req, res) => {
+    app.post("/register", async (req, res) => {
       const { name, email, password } = req.body;
 
       // Check if email already exists
-      const existingUser = await collection.findOne({ email });
-      if (existingUser) {
+      try {
+        const existingUser = await collection.findOne({ email });
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: "User already exists",
+          });
+        }
+
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insert user into the database
+        await collection.insertOne({
+          name,
+          email,
+          password: hashedPassword,
+          role: "user",
+        });
+
+        res.status(201).json({
+          success: true,
+          message: "User registered successfully",
+        });
+      } catch (error) {
         return res.status(400).json({
           success: false,
-          message: "User already exists",
+          message: "Too many request !!! Try after reloading",
         });
       }
-
-      // Hash the password
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Insert user into the database
-      await collection.insertOne({ name, email, password: hashedPassword });
-
-      res.status(201).json({
-        success: true,
-        message: "User registered successfully",
-      });
     });
 
     // User Login
-    app.post("/api/v1/login", async (req, res) => {
+    app.post("/login", async (req, res) => {
       const { email, password } = req.body;
 
       // Find user by email
-      const user = await collection.findOne({ email });
-      if (!user) {
-        return res.status(401).json({ message: "Invalid email or password" });
+      try {
+        const user = await collection.findOne({ email });
+        if (!user) {
+          return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // Compare hashed password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+          return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+          { email: user?.email, name: user?.name, role: user?.role },
+          process.env.JWT_SECRET,
+          {
+            expiresIn: process.env.EXPIRES_IN,
+          }
+        );
+
+        res.json({
+          success: true,
+          message: "Login successful",
+          token,
+        });
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Too many request !!! Try after reloading",
+        });
       }
-
-      // Compare hashed password
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
-
-      // Generate JWT token
-      const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
-        expiresIn: process.env.EXPIRES_IN,
-      });
-
-      res.json({
-        success: true,
-        message: "Login successful",
-        token,
-      });
     });
 
     // ==============================================================
@@ -101,6 +125,27 @@ async function run() {
         });
       } catch (error) {
         return res.send({ message: "Error server" });
+      }
+    });
+    // ==============================================================
+    app.delete("/products/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        console.log(id);
+        const result = await productCollection.findOneAndDelete({
+          _id: new ObjectId(id),
+        });
+        console.log(result);
+        return res.status(200).json({
+          success: true,
+          message: "A Product is deleted successfully!!!",
+          result,
+        });
+      } catch (error) {
+        return res.status(404).json({
+          success: false,
+          message: "Something went wrong!!",
+        });
       }
     });
     // ==============================================================
@@ -189,6 +234,33 @@ async function run() {
           .status(500)
           .json({ success: false, error: "Internal server error" });
       }
+    });
+    // ==============================================================
+    // checkout section
+    app.post("/orders", async (req, res) => {
+      const order = req.body;
+      const orderInfo = {
+        ...order,
+        status: "pending",
+      };
+
+      // console.log(orderInfo);
+      const result = await orderCollection.insertOne(orderInfo);
+
+      return res.status(200).json({
+        success: true,
+        message: "Order placed successfully!!!",
+        result,
+      });
+    });
+    app.get("/orders", async (req, res) => {
+      const result = await orderCollection.find().toArray();
+
+      return res.status(200).json({
+        success: true,
+        message: "Orders get successfully!!!",
+        result,
+      });
     });
     // ==============================================================
     app.get("*", async (req, res) => {
