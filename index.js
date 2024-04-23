@@ -111,8 +111,20 @@ async function run() {
 
     app.post("/products", async (req, res) => {
       const products = req.body;
-      const result = await productCollection.insertOne(products);
-      return res.send(result);
+      try {
+        const result = await productCollection.insertOne(products);
+        return res.status(200).json({
+          success: true,
+          message: "Product created successfully!!!",
+          result,
+        });
+      } catch (error) {
+        return res.status(404).json({
+          success: false,
+          message: "something went wrong",
+          result,
+        });
+      }
     });
     // ==============================================================
     app.get("/products", async (req, res) => {
@@ -252,6 +264,47 @@ async function run() {
         message: "Order placed successfully!!!",
         result,
       });
+    });
+    app.patch("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await orderCollection.findOneAndUpdate(
+          { _id: new ObjectId(id) },
+          { $set: { status: "delivered" } } // Update the status to "delivered"
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: "Order updated successfully!!!",
+          result,
+        });
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "something went wrong!!!",
+          result,
+        });
+      }
+    });
+    app.delete("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await orderCollection.findOneAndDelete({
+          _id: new ObjectId(id),
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: "Order deleted successfully!!!",
+          result,
+        });
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "something went wrong!!!",
+          result,
+        });
+      }
     });
     app.get("/orders", async (req, res) => {
       const result = await orderCollection.find().toArray();
