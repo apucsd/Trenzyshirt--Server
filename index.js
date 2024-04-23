@@ -126,7 +126,7 @@ async function run() {
         });
       }
     });
-    // ==============================================================
+
     app.get("/products", async (req, res) => {
       try {
         const result = await productCollection.find().toArray();
@@ -139,7 +139,7 @@ async function run() {
         return res.send({ message: "Error server" });
       }
     });
-    // ==============================================================
+
     app.delete("/products/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -160,7 +160,30 @@ async function run() {
         });
       }
     });
-    // ==============================================================
+    app.put("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedProduct = req.body;
+      try {
+        const result = await productCollection.findOneAndUpdate(
+          { _id: new ObjectId(id) },
+          { $set: updatedProduct }
+        );
+        console.log(result);
+        return res.status(200).json({
+          success: true,
+          message: "A Product is updated successfully!!!",
+          result,
+        });
+      } catch (error) {
+        // Handle other errors
+        console.error("Error updating product:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Something went wrong!!!",
+          error: error.message,
+        });
+      }
+    });
     app.get("/products/filter", async (req, res) => {
       const query = req.query;
       let filter = {};
@@ -213,7 +236,6 @@ async function run() {
       }
     });
 
-    // ==============================================================
     app.get("/products/:id", async (req, res) => {
       try {
         const { id } = req.params;
@@ -248,7 +270,7 @@ async function run() {
       }
     });
     // ==============================================================
-    // checkout section
+    // orders section
     app.post("/orders", async (req, res) => {
       const order = req.body;
       const orderInfo = {
@@ -276,6 +298,24 @@ async function run() {
         return res.status(200).json({
           success: true,
           message: "Order updated successfully!!!",
+          result,
+        });
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "something went wrong!!!",
+          result,
+        });
+      }
+    });
+    app.get("/my-orders/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const result = await orderCollection.find({ email }).toArray();
+
+        return res.status(200).json({
+          success: true,
+          message: "My orders fetched successfully!!!",
           result,
         });
       } catch (error) {
