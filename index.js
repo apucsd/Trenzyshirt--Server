@@ -186,33 +186,20 @@ async function run() {
     });
     app.get("/products/filter", async (req, res) => {
       const query = req.query;
+
       let filter = {};
-
-      // Handle filtering by rating
       if (query.rating) {
-        const rating = parseFloat(query.rating);
-        filter.rating = { $lte: rating };
+        filter.rating = Number(query.rating);
       }
-
-      // Handle filtering by price range
+      if (query.category) {
+        filter.category = query.category;
+      }
       if (query.price) {
         const [minPrice, maxPrice] = query.price.split("-");
         filter.price = {
           $gte: parseFloat(minPrice),
           $lte: parseFloat(maxPrice),
         };
-      }
-
-      // Handle filtering by flash sale
-      if (query.flashSale) {
-        const flashSale = query.flashSale === "true";
-        filter.flashSale = flashSale;
-      }
-
-      // Handle filtering by top rated
-      if (query.topRated) {
-        const topRated = query.topRated === "true";
-        filter.topRated = topRated;
       }
 
       try {
@@ -223,6 +210,46 @@ async function run() {
         return res.status(200).json({
           success: true,
           message: "Products fetched successfully",
+          result: result,
+        });
+      } catch (error) {
+        // Handle any errors that may occur
+        console.error("Error fetching products:", error);
+        return res.status(500).json({
+          success: false,
+          message: "An error occurred while fetching products",
+          error: error.message,
+        });
+      }
+    });
+    app.get("/products/filter/flash-sales", async (req, res) => {
+      try {
+        const result = await productCollection
+          .find({ flashSale: true })
+          .toArray();
+        return res.status(200).json({
+          success: true,
+          message: "Flash Sales Products fetched successfully",
+          result: result,
+        });
+      } catch (error) {
+        // Handle any errors that may occur
+        console.error("Error fetching products:", error);
+        return res.status(500).json({
+          success: false,
+          message: "An error occurred while fetching products",
+          error: error.message,
+        });
+      }
+    });
+    app.get("/products/filter/top-rated", async (req, res) => {
+      try {
+        const result = await productCollection
+          .find({ topRated: true })
+          .toArray();
+        return res.status(200).json({
+          success: true,
+          message: "Top Rated Products fetched successfully",
           result: result,
         });
       } catch (error) {
@@ -276,6 +303,9 @@ async function run() {
       const orderInfo = {
         ...order,
         status: "pending",
+        invoiceDate: new Date(),
+        invoiceNumber:
+          Date.now().toString().slice(-8) + Math.floor(Math.random() * 10),
       };
 
       // console.log(orderInfo);
@@ -316,6 +346,26 @@ async function run() {
         return res.status(200).json({
           success: true,
           message: "My orders fetched successfully!!!",
+          result,
+        });
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "something went wrong!!!",
+          result,
+        });
+      }
+    });
+    app.get("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await orderCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: "Single Order fetched successfully!!!",
           result,
         });
       } catch (error) {
